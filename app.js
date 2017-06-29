@@ -16,76 +16,145 @@ var connector = new builder.ChatConnector({
 // Listen for messages from users 
 server.post('/api/messages', connector.listen());
 
-var bot = new builder.UniversalBot(connector, {persistConversationData: true});
-
-server.post('/api/messages', connector.listen());
-
-bot.dialog('/', function (session, args) {
-    if (!session.userData.greeting) {
-        session.send("Hello. What is your name?");
-        session.userData.greeting = true;
-    } else if (!session.userData.name) {
-        console.log("Begin");
-        getName(session);
-    } else if (!session.userData.email) {
-        console.log("Name is: " + session.userData.name);
-        getEmail(session);
-    } else if (!session.userData.password) {
-        console.log("Name is: " + session.userData.name);
-        console.log("Email is: " + session.userData.email);
-        getPassword(session);
-    } else {
-        session.userData = null;
-    }
-    session.endDialog();
-});
-
-
-function getName(session) {
-    name = session.message.text;
-    session.userData.name = name;
-    session.send("Hello, " + name + ". What is your Email ID?");
-}
-
-function getEmail(session) {
-    var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    email = session.message.text;
-    if (re.test(email)) {
-        session.userData.email = email;
-        session.send("Thank you, " + session.userData.name + ". Please set a new password.");
-    } else {
-        session.send("Please type a valid email address. For example: test@hotmail.com");
-    }
-}
-
-function getPassword(session) {
-    var re = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/;
-    password = session.message.text;
-    if (re.test(password)) {
-        session.userData.password = password;
-        var data = session.userData;
-        sendData(data, function (msg) {
-            session.send(msg);
-            session.userData = null;
+var bot = new builder.UniversalBot(connector, [
+    function (session) {
+        builder.Prompts.choice(session, 'What rules would like to get?', CardNames, {
+            maxRetries: 3,
+            retryPrompt: 'Ooops, what you wrote is not a valid option, please try again'
         });
-    } else {
-        session.send("Password must contain at least 8 characters, including at least 1 number, 1 uppercase letter, 1 lower case letter and 1 special character. For example: Mybot@123");
+    },
+    function (session, results) {
+
+        // create the card based on selection
+        var selectedCardName = results.response.entity;
+        var card = createCard(selectedCardName, session);
+
+        // attach the card to the reply message
+        var msg = new builder.Message(session).addAttachment(card);
+        session.send(msg);
+    }
+]);
+
+var HeroCardName = 'Zookeeper';
+/*var ThumbnailCardName = 'Thumbnail card';
+var ReceiptCardName = 'Receipt card';
+var SigninCardName = 'Sign-in card';
+var AnimationCardName = "Animation card";
+var VideoCardName = "Video card";
+var AudioCardName = "Audio card";
+var CardNames = [HeroCardName, ThumbnailCardName, ReceiptCardName, SigninCardName, AnimationCardName, VideoCardName, AudioCardName];*/
+var CardNames = [HeroCardName];
+function createCard(selectedCardName, session) {
+    switch (selectedCardName) {
+        case HeroCardName:
+            return createHeroCard(session);
+        /*case ThumbnailCardName:
+            return createThumbnailCard(session);
+        case ReceiptCardName:
+            return createReceiptCard(session);
+        case SigninCardName:
+            return createSigninCard(session);
+        case AnimationCardName:
+            return createAnimationCard(session);
+        case VideoCardName:
+            return createVideoCard(session);
+        case AudioCardName:
+            return createAudioCard(session);*/
+        default:
+            return createHeroCard(session);
     }
 }
 
-function sendData(data, cb) {
-    //http.get("http://wanderer.cloud/luis-bot/saveData.php?name=" + data.name + "&email=" + data.email + "&password=" + data.password, function (res) {
-		http.get("http://wanderer.cloud/luis-bot/saveData.php" , function (res) {
-        var msg = '';
-        res.on("data", function (chunk) {
-            msg += chunk;
-        });
-
-        res.on('end', function () {
-            cb(msg);
-        });
-
-    }).on('error', function (e) {
-        console.log("Got error: " + e.message);
-    });
+function createHeroCard(session) {
+    return new builder.HeroCard(session)
+        .title('BotFramework Nomad')
+        .subtitle('Setup Rules for Zookeeper')
+        .text('Build and connect intelligent bots to interact with your users naturally wherever they are, from text/sms to Skype, Slack, Office 365 mail and other popular services.')
+        .images([
+            builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
+        ])
+        .buttons([
+            builder.CardAction.openUrl(session, 'https://wanderer.cloud/logicApps/sendRulesNomad.php?name=Arun%20Kumar%20Agarwal&email=arun@nathanark.com', 'Send Email')
+        ]);
 }
+
+/*function createThumbnailCard(session) {
+    return new builder.ThumbnailCard(session)
+        .title('BotFramework Thumbnail Card')
+        .subtitle('Your bots — wherever your users are talking')
+        .text('Build and connect intelligent bots to interact with your users naturally wherever they are, from text/sms to Skype, Slack, Office 365 mail and other popular services.')
+        .images([
+            builder.CardImage.create(session, 'https://sec.ch9.ms/ch9/7ff5/e07cfef0-aa3b-40bb-9baa-7c9ef8ff7ff5/buildreactionbotframework_960.jpg')
+        ])
+        .buttons([
+            builder.CardAction.openUrl(session, 'https://docs.microsoft.com/bot-framework/', 'Get Started')
+        ]);
+}
+
+var order = 1234;
+function createReceiptCard(session) {
+    return new builder.ReceiptCard(session)
+        .title('John Doe')
+        .facts([
+            builder.Fact.create(session, order++, 'Order Number'),
+            builder.Fact.create(session, 'VISA 5555-****', 'Payment Method')
+        ])
+        .items([
+            builder.ReceiptItem.create(session, '$ 38.45', 'Data Transfer')
+                .quantity(368)
+                .image(builder.CardImage.create(session, 'https://github.com/amido/azure-vector-icons/raw/master/renders/traffic-manager.png')),
+            builder.ReceiptItem.create(session, '$ 45.00', 'App Service')
+                .quantity(720)
+                .image(builder.CardImage.create(session, 'https://github.com/amido/azure-vector-icons/raw/master/renders/cloud-service.png'))
+        ])
+        .tax('$ 7.50')
+        .total('$ 90.95')
+        .buttons([
+            builder.CardAction.openUrl(session, 'https://azure.microsoft.com/en-us/pricing/', 'More Information')
+                .image('https://raw.githubusercontent.com/amido/azure-vector-icons/master/renders/microsoft-azure.png')
+        ]);
+}
+
+function createSigninCard(session) {
+    return new builder.SigninCard(session)
+        .text('BotFramework Sign-in Card')
+        .button('Sign-in', 'https://login.microsoftonline.com');
+}
+
+function createAnimationCard(session) {
+    return new builder.AnimationCard(session)
+        .title('Microsoft Bot Framework')
+        .subtitle('Animation Card')
+        .image(builder.CardImage.create(session, 'https://docs.microsoft.com/en-us/bot-framework/media/how-it-works/architecture-resize.png'))
+        .media([
+            { url: 'http://i.giphy.com/Ki55RUbOV5njy.gif' }
+        ]);
+}
+
+function createVideoCard(session) {
+    return new builder.VideoCard(session)
+        .title('Big Buck Bunny')
+        .subtitle('by the Blender Institute')
+        .text('Big Buck Bunny (code-named Peach) is a short computer-animated comedy film by the Blender Institute, part of the Blender Foundation. Like the foundation\'s previous film Elephants Dream, the film was made using Blender, a free software application for animation made by the same foundation. It was released as an open-source film under Creative Commons License Attribution 3.0.')
+        .image(builder.CardImage.create(session, 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/220px-Big_buck_bunny_poster_big.jpg'))
+        .media([
+            { url: 'http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4' }
+        ])
+        .buttons([
+            builder.CardAction.openUrl(session, 'https://peach.blender.org/', 'Learn More')
+        ]);
+}
+
+function createAudioCard(session) {
+    return new builder.AudioCard(session)
+        .title('I am your father')
+        .subtitle('Star Wars: Episode V - The Empire Strikes Back')
+        .text('The Empire Strikes Back (also known as Star Wars: Episode V – The Empire Strikes Back) is a 1980 American epic space opera film directed by Irvin Kershner. Leigh Brackett and Lawrence Kasdan wrote the screenplay, with George Lucas writing the film\'s story and serving as executive producer. The second installment in the original Star Wars trilogy, it was produced by Gary Kurtz for Lucasfilm Ltd. and stars Mark Hamill, Harrison Ford, Carrie Fisher, Billy Dee Williams, Anthony Daniels, David Prowse, Kenny Baker, Peter Mayhew and Frank Oz.')
+        .image(builder.CardImage.create(session, 'https://upload.wikimedia.org/wikipedia/en/3/3c/SW_-_Empire_Strikes_Back.jpg'))
+        .media([
+            { url: 'http://www.wavlist.com/movies/004/father.wav' }
+        ])
+        .buttons([
+            builder.CardAction.openUrl(session, 'https://en.wikipedia.org/wiki/The_Empire_Strikes_Back', 'Read More')
+        ]);
+}*/
